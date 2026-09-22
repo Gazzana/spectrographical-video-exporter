@@ -4,4 +4,9 @@ SVE is a sonogram creation software designed for electroacoustic music, inspired
 
 ## Features
 
-* FFmpeg
+* Generation of spectogram and sonogram from audio file
+
+## Dependencies
+User must have these installed in order to use SVE
+* [FFmpeg](https://ffmpeg.org/)
+* [SoX](https://sourceforge.net/projects/sox/)

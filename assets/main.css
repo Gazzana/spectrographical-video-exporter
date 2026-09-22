@@ -1,0 +1,44 @@
+:root {
+    /* Colors from https://www.iamsajid.com/ui-colors/ */
+    --bg-dark: oklch(0.92 0.025 196);
+    --bg: oklch(0.96 0.025 196);
+    --bg-light: oklch(1 0.025 196);
+    --text: oklch(0.15 0.05 196);
+    --text-muted: oklch(0.4 0.05 196);
+    --highlight: oklch(1 0.05 196);
+    --border: oklch(0.6 0.05 196);
+    --border-muted: oklch(0.7 0.05 196);
+    --primary: oklch(0.4 0.1 196);
+    --secondary: oklch(0.4 0.1 16);
+    --danger: oklch(0.5 0.05 30);
+    --warning: oklch(0.5 0.05 100);
+    --success: oklch(0.5 0.05 160);
+    --info: oklch(0.5 0.05 260);
+}
+
+body {
+    background-color: var(--bg-dark);
+    color: var(--text);
+    font-family: 'Helvetica', Tahoma, Geneva, Verdana, sans-serif;
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+    margin: 0;
+}
+
+#title {
+    text-align: center;
+}
+
+button {
+    background-color: var(--bg-dark);
+    
+    padding: 10px;
+    border: 2px solid;
+    border-radius: 5%;
+    
+    &:hover {
+        background-color: var(--bg-light);
+    }
+
+}
