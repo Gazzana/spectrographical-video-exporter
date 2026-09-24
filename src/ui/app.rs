@@ -8,6 +8,8 @@ static CSS: Asset = asset!("/assets/main.css");
 #[component]
 pub fn App() -> Element {
 
+    let color_preset = use_signal(|| String::from("magma"));
+    let cor_agulha = use_signal(|| String::from("#FF0000"));
     let folder_path = use_signal(|| String::new());
     let keep_img = use_signal(|| false);
     let audio_files = use_signal(|| Vec::<PathBuf>::new());
@@ -24,14 +26,19 @@ pub fn App() -> Element {
         FolderSelector { folder_path }
 
         KeepSpectrogram { keep_img }
-        
+
         Buttons {
             folder_path,
             keep_img,
+            color_preset,
+            cor_agulha,
             audio_files,
             status_msg,
             is_processing
         }
+
+        AgulhaColorSelector { cor_agulha }
+        SpectrogramPresetSelection { color_preset }
 
         StatusPanel { status_msg, audio_files }
     }
@@ -54,12 +61,14 @@ fn Title() -> Element {
 fn Buttons(
     folder_path: Signal<String>,
     keep_img: Signal<bool>,
+    color_preset: Signal<String>,
+    cor_agulha: Signal<String>,
     mut audio_files: Signal<Vec<PathBuf>>,
     mut status_msg: Signal<String>,
     mut is_processing: Signal<bool>
 ) -> Element {
     rsx! {
-        div { 
+        div {
             // Botao de buscar arvquivos
             button {
                 class: "btn",
@@ -70,14 +79,14 @@ fn Buttons(
                         status_msg.set("Erro: Digite o caminho de uma pasta primeiro.".to_string());
                         return;
                     }
-                    
+
                     status_msg.set("Buscando arquivos de áudio...".to_string());
 
                     // CHAMA SEU BACKEND AQUI
                     let encontrados = crate::core::scanner::search(&path);
-                    
+
                     let qtd = encontrados.len();
-                    
+
                     audio_files.set(encontrados);
                     status_msg.set(format!("Busca concluída: {} arquivo(s) encontrado(s).", qtd));
                 },
@@ -89,9 +98,12 @@ fn Buttons(
                 disabled: is_processing() || audio_files.read().is_empty(),
                 onclick: move |_| {
                     is_processing.set(true);
-                    
+
                     let arquivos = audio_files.read().clone();
                     let manter_img = keep_img();
+
+                    let preset_escolhido = color_preset.read().clone();
+                    let cor_escolhida_agulha = cor_agulha.read().clone();
 
                     spawn(async move {
                         let total = arquivos.len();
@@ -101,12 +113,16 @@ fn Buttons(
                         for (i, arquivo) in arquivos.into_iter().enumerate() {
                             let nome = arquivo.file_name().unwrap_or_default().to_string_lossy();
                             status_msg.set(format!("Renderizando {}/{} ({})...", i + 1, total, nome));
-                            
+
+                            // Clonando as variaveis para thread assincrona
                             let arquivo_clone = arquivo.clone();
                             let manter_clone = manter_img;
-                            
+
+                            let preset_clone = preset_escolhido.clone();
+                            let agulha_clone = cor_escolhida_agulha.clone();
+
                             let sucesso = tokio::task::spawn_blocking(move || {
-                                crate::core::renderer::generate_sonogram(arquivo_clone, manter_clone)
+                                crate::core::renderer::call_renderer(arquivo_clone, manter_clone, &preset_clone, &agulha_clone)
                             }).await.unwrap();
 
                             if sucesso {
@@ -157,15 +173,55 @@ fn KeepSpectrogram(mut keep_img: Signal<bool>) -> Element {
     }
 }
 
+
+const PRESETS_FFMPEG: &[&str] = &["magma", "inferno", "plasma", "viridis", "turbo", "cividis", "range1", "range2", "shadows", "highlights", "solar", "nominal", "preferred", "total", "spectral", "cool", "heat", "fiery", "blues", "green", "helix"];
+
+#[component]
+fn SpectrogramPresetSelection(mut color_preset: Signal<String>) -> Element {
+    rsx! {
+        div { class: "preset-selector-container",
+            label { margin_right: "10px", "Cores do Sonograma:" }
+            select {
+                // Mostra o valor atual armazenado no Signal
+                value: "{color_preset}",
+                // Atualiza o estado global quando o usuário escolhe outra opção
+                onchange: move |evt| color_preset.set(evt.value()),
+
+                // O Dioxus gera automaticamente as tags <option> baseadas na nossa array
+                for preset in PRESETS_FFMPEG {
+                    option {
+                        value: "{preset}",
+                        // Coloca a primeira letra em maiúscula
+                        "{preset[0..1].to_uppercase()}{&preset[1..]}"
+                    }
+                }
+            }
+        }
+    }
+}
+
+
+
+#[component]
+fn AgulhaColorSelector(mut cor_agulha: Signal<String>) -> Element {
+    rsx! {
+        input {
+            type: "color",
+            value: "{cor_agulha}",
+            oninput: move |evt| cor_agulha.set(evt.value())
+        }
+    }
+}
+
 // TODO: remover essa palhacada
 #[component]
 fn StatusPanel(status_msg: Signal<String>, audio_files: Signal<Vec<PathBuf>>) -> Element {
     rsx! {
         div { class: "status-panel",
             hr {}
-            h3 { "Painel de Status" }
+            h3 { "Status [debug-only]" }
             p { font_weight: "bold", color: "#e74c3c", "{status_msg}" }
-            
+
             // Mostra o que encontrou na pasta
             if !audio_files.read().is_empty() {
                 ul {
